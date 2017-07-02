@@ -7,4 +7,5 @@ and you need to insert recieved tokken it this constructor
 ```C#
 // Token;
         private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
-        ```
+```C#
+![GitHub Logo](https://habrastorage.org/web/11e/075/a34/11e075a346de499b8a02492bec44a1ba.png)
