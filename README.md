@@ -1,12 +1,10 @@
 # CrudBot
-## Demo version of telegram bot which working with database using ADO.NET CRUD'
-
-![GitHub Logo](https://habrastorage.org/web/11e/075/a34/11e075a346de499b8a02492bec44a1ba.png)
+## Demo version of telegram bot which works with database using ADO.NET CRUD'
 
 * MrRoundRobin Nuget package used in this demo project
-* To use this code you should get the telegram tokken
-and you need to insert recieved tokken it this constructor
+* To use this code you should get the telegram token and it would be best if you inserted the received token in this constructor
 ```C#
 // Token;
-        private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
+private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
+```
 
