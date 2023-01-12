@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26430.6
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Telegram.Bot.DAL", "DAL\Telegram.Bot.DAL.csproj", "{1AE0914C-A449-4084-9244-CEF2CB1216BB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CrudBot.Main", "CrudBot\CrudBot.Main.csproj", "{1AE0914C-A449-4084-9244-CEF2CB1216BB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -18,5 +18,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8F34CA56-C3D0-4627-8DF9-81160AA2E406}
 	EndGlobalSection
 EndGlobal

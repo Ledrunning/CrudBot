@@ -3,19 +3,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InputMessageContents;
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.DAL;
-using System.Configuration;
 
-
-namespace Telegram.Bot.Examples.DAL
+namespace DAL
 {
-    class Program
+    internal class Program
     {
         // Token;
         private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
@@ -28,10 +26,10 @@ namespace Telegram.Bot.Examples.DAL
                                     "Anderson, Thomas, Jackson, White, Harris, Martin, Thompson, Wood, Lewis, Scott, " +
                                     "Cooper, King, Green, Walker, Edwards, Turner, Morgan, Baker, Hill, Phillips";
 
-        private static string[] UsersFirstNames = sfn.Split(new string[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
-        private static string[] UsersLastNames = sln.Split(new string[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+        private static readonly string[] UsersFirstNames = sfn.Split(new[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+        private static readonly string[] UsersLastNames = sln.Split(new[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Bot.OnCallbackQuery += BotOnCallbackQueryReceived;
             Bot.OnMessage += BotOnMessageReceived;
@@ -41,8 +39,6 @@ namespace Telegram.Bot.Examples.DAL
             Bot.OnReceiveError += BotOnReceiveError;
 
             Console.WriteLine("Starting Ledrunner Bot.....");
-            // Console.WriteLine(UsersFirstNames.Length);
-            // Console.WriteLine(UsersLastNames.Length);
 
             var me = Bot.GetMeAsync().Result;
 
@@ -179,7 +175,7 @@ namespace Telegram.Bot.Examples.DAL
 
             else if (message.Text.StartsWith("/getusers")) // request DBUsers;
             {
-                var u = UserManager.ReadDataFromDB();
+                var u = UserManager.ReadUsersAsync();
                 Users us = new Users();
                 foreach (var item in u)
                 {
