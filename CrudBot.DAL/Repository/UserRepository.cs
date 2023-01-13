@@ -1,21 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Data;
 using System.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
+using CrudBot.DAL.Entitiy;
 
-namespace DAL
+namespace CrudBot.DAL.Repository
 {
-    public class UserManager
+    public class UserRepository
     {
-        private static readonly string ConnectionString =
-            ConfigurationManager.ConnectionStrings["DBConection"].ConnectionString;
-
-        private static async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
+        private readonly string _connectionString;
+        public UserRepository(string connectionString)
         {
-            using (var connection = new SqlConnection(ConnectionString))
+            _connectionString = connectionString;
+        }
+
+        private async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
+        {
+            using (var connection = new SqlConnection(_connectionString))
             {
                 command.Connection = connection;
                 await connection.OpenAsync(token);
@@ -30,12 +33,12 @@ namespace DAL
             return false;
         }
 
-        public async Task<bool> AddUsersAsync(User user, CancellationToken token)
+        public async Task<bool> AddUserAsync(string firstName, string lastName, CancellationToken token)
         {
             var command = new SqlCommand();
             command.CommandText = "INSERT INTO [dbo].[Users] (FirstName, LastName) VALUES(@firstName, @lastName)";
-            command.Parameters.Add(new SqlParameter("@firstName", user.FirstName));
-            command.Parameters.Add(new SqlParameter("@lastName", user.LastName));
+            command.Parameters.Add(new SqlParameter("@firstName", firstName));
+            command.Parameters.Add(new SqlParameter("@lastName", lastName));
 
             return await ExecuteAsync(command, token);
         }
@@ -71,9 +74,9 @@ namespace DAL
             return await ExecuteAsync(command, token);
         }
 
-        public static IList<User> ReadUsersAsync()
+        public async Task<IList<User>> ReadUsersAsync(CancellationToken token)
         {
-            using (var connection = new SqlConnection(ConnectionString))
+            using (var connection = new SqlConnection(_connectionString))
             {
                 var users = new List<User>();
                 const string query = @"SELECT 
@@ -84,24 +87,15 @@ namespace DAL
 
                 var command = new SqlCommand(query, connection);
 
-                connection.Open();
-                var reader = command.ExecuteReader();
-                while (reader.Read())
+                await connection.OpenAsync(token);
+                var reader = await command.ExecuteReaderAsync(token);
+                while (await reader.ReadAsync(token))
                 {
                     users.Add(new User(Convert.ToInt64(reader["Id"]), reader["FirstName"].ToString(),
                         reader["LastName"].ToString()));
                 }
 
                 return users;
-            }
-        }
-
-        public async Task FillDataBase(string[] fn, string[] ln, CancellationToken token)
-        {
-            var rnd = new Random();
-            for (var i = 0; i < fn.Length - 1; i++)
-            {
-                await AddUsersAsync(new User(rnd.Next(0, 8), fn[i], ln[i]), token);
             }
         }
     }

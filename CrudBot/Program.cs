@@ -1,8 +1,14 @@
 ﻿using System;
+using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using CrudBot.DAL.Repository;
+using DAL.Model;
+using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
@@ -10,6 +16,8 @@ using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InputMessageContents;
 using Telegram.Bot.Types.ReplyMarkups;
+using File = System.IO.File;
+using User = Telegram.Bot.Types.User;
 
 namespace DAL
 {
@@ -18,19 +26,26 @@ namespace DAL
         // Token;
         private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
 
-        private static string sfn = "Abraham, Addison, Adrian, Albert, Alec, Alfred, Alvin, Andrew, " +
-                                    "Andy, Archibald, Archie, Arlo, Arthur, Arthur, Austen, Barnabe, Bartholomew, " +
-            "Bertram, Bramwell, Byam, Cardew, Chad, Chance, Colin, Coloman, Curtis, Cuthbert, Daniel, Darryl, David,";
+        private static readonly string JsonFilePath = Path.GetDirectoryName(
+            Assembly.GetExecutingAssembly().Location);
 
-        private static string sln = "Smith, Johnson, Williams, Jones, Brown, Davis, Miller, Wilson, Moore, Taylor, " +
-                                    "Anderson, Thomas, Jackson, White, Harris, Martin, Thompson, Wood, Lewis, Scott, " +
-                                    "Cooper, King, Green, Walker, Edwards, Turner, Morgan, Baker, Hill, Phillips";
+        private static readonly string ConnectionString =
+            ConfigurationManager.ConnectionStrings["DBConection"].ConnectionString;
 
-        private static readonly string[] UsersFirstNames = sfn.Split(new[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
-        private static readonly string[] UsersLastNames = sln.Split(new[] { ",", "\n", "\r", "\t" }, StringSplitOptions.RemoveEmptyEntries);
+        private static readonly CancellationTokenSource TokenSource = new CancellationTokenSource();
+        private static readonly CancellationToken _cancellationToken = TokenSource.Token;
+
+        private static UserDto _userDto;
+
+        private static readonly UserRepository UserRepository = new UserRepository(ConnectionString);
 
         private static void Main(string[] args)
         {
+            var jsonData = File.ReadAllText(Path.Combine(JsonFilePath, "users.json"));
+
+            _userDto = JsonConvert.DeserializeObject<UserDto>(jsonData);
+
+
             Bot.OnCallbackQuery += BotOnCallbackQueryReceived;
             Bot.OnMessage += BotOnMessageReceived;
             Bot.OnMessageEdited += BotOnMessageReceived;
@@ -47,7 +62,6 @@ namespace DAL
             Console.WriteLine("Press any key to stop the programm");
             Console.ReadLine();
             Bot.StopReceiving();
-
         }
 
         private static void BotOnReceiveError(object sender, ReceiveErrorEventArgs receiveErrorEventArgs)
@@ -55,14 +69,17 @@ namespace DAL
             Debugger.Break();
         }
 
-        private static void BotOnChosenInlineResultReceived(object sender, ChosenInlineResultEventArgs chosenInlineResultEventArgs)
+        private static void BotOnChosenInlineResultReceived(object sender,
+            ChosenInlineResultEventArgs chosenInlineResultEventArgs)
         {
-            Console.WriteLine($"Received choosen inline result: {chosenInlineResultEventArgs.ChosenInlineResult.ResultId}");
+            Console.WriteLine(
+                $"Received choosen inline result: {chosenInlineResultEventArgs.ChosenInlineResult.ResultId}");
         }
 
         private static async void BotOnInlineQueryReceived(object sender, InlineQueryEventArgs inlineQueryEventArgs)
         {
-            InlineQueryResult[] results = {
+            InlineQueryResult[] results =
+            {
                 new InlineQueryResultLocation
                 {
                     Id = "1",
@@ -72,7 +89,7 @@ namespace DAL
                     InputMessageContent = new InputLocationMessageContent // message if result is selected
                     {
                         Latitude = 40.7058316f,
-                        Longitude = -74.2581888f,
+                        Longitude = -74.2581888f
                     }
                 },
 
@@ -90,14 +107,18 @@ namespace DAL
                 }
             };
 
-            await Bot.AnswerInlineQueryAsync(inlineQueryEventArgs.InlineQuery.Id, results, isPersonal: true, cacheTime: 0);
+            await Bot.AnswerInlineQueryAsync(inlineQueryEventArgs.InlineQuery.Id, results, isPersonal: true,
+                cacheTime: 0);
         }
 
         private static async void BotOnMessageReceived(object sender, MessageEventArgs messageEventArgs)
         {
             var message = messageEventArgs.Message;
 
-            if (message == null || message.Type != MessageType.TextMessage) return;
+            if (message == null || message.Type != MessageType.TextMessage)
+            {
+                return;
+            }
 
             if (message.Text.StartsWith("/inline")) // send inline keyboard
             {
@@ -108,12 +129,12 @@ namespace DAL
                     new[] // first row
                     {
                         new InlineKeyboardButton("1.1"),
-                        new InlineKeyboardButton("1.2"),
+                        new InlineKeyboardButton("1.2")
                     },
                     new[] // second row
                     {
                         new InlineKeyboardButton("2.1"),
-                        new InlineKeyboardButton("2.2"),
+                        new InlineKeyboardButton("2.2")
                     }
                 });
 
@@ -126,15 +147,15 @@ namespace DAL
             {
                 var keyboard = new ReplyKeyboardMarkup(new[]
                 {
-                    new [] // first row
+                    new[] // first row
                     {
                         new KeyboardButton("1.1"),
-                        new KeyboardButton("1.2"),
+                        new KeyboardButton("1.2")
                     },
-                    new [] // last row
+                    new[] // last row
                     {
                         new KeyboardButton("2.1"),
-                        new KeyboardButton("2.2"),
+                        new KeyboardButton("2.2")
                     }
                 });
 
@@ -167,7 +188,7 @@ namespace DAL
                     new KeyboardButton("Contact")
                     {
                         RequestContact = true
-                    },
+                    }
                 });
 
                 await Bot.SendTextMessageAsync(message.Chat.Id, "Who or Where are you?", replyMarkup: keyboard);
@@ -175,37 +196,37 @@ namespace DAL
 
             else if (message.Text.StartsWith("/getusers")) // request DBUsers;
             {
-                var u = UserManager.ReadUsersAsync();
-                Users us = new Users();
-                foreach (var item in u)
+                var users = await UserRepository.ReadUsersAsync(_cancellationToken);
+                var telegramUsers = new User();
+                foreach (var user in users)
                 {
                     await Bot.SendTextMessageAsync(message.Chat.Id,
-                        Convert.ToString(item.Id + " " + item.FirstName + " " + item.LastName + "\n"),
+                        Convert.ToString(user.Id + " " + user.FirstName + " " + user.LastName + "\n"),
                         replyMarkup: new ReplyKeyboardHide());
                 }
-                foreach (var item in u)
+
+                foreach (var item in users)
                 {
                     Console.WriteLine(item.Id + " " + item.FirstName + " " + item.LastName);
                 }
-
-
             }
 
             else if (message.Text.StartsWith("/filldata"))
             {
-                UserManager.FillDataBase(UsersFirstNames, UsersLastNames);
-                var fillMsg = @"Database has been filled!";
+                foreach (var user in _userDto.Users)
+                {
+                    await UserRepository.AddUserAsync(user.Name, user.LastName, _cancellationToken);
+                }
 
-                await Bot.SendTextMessageAsync(message.Chat.Id, fillMsg,
+                await Bot.SendTextMessageAsync(message.Chat.Id, "Database has been filled!",
                     replyMarkup: new ReplyKeyboardHide());
             }
 
             else if (message.Text.StartsWith("/cleardatabase"))
             {
-                UserManager.DeleteAll();
-                var clearMsg = @"Database has been cleared!";
+                await UserRepository.DeleteAllAsync(_cancellationToken);
 
-                await Bot.SendTextMessageAsync(message.Chat.Id, clearMsg,
+                await Bot.SendTextMessageAsync(message.Chat.Id, "Database has been cleared!",
                     replyMarkup: new ReplyKeyboardHide());
             }
             else
@@ -225,7 +246,8 @@ namespace DAL
             }
         }
 
-        private static async void BotOnCallbackQueryReceived(object sender, CallbackQueryEventArgs callbackQueryEventArgs)
+        private static async void BotOnCallbackQueryReceived(object sender,
+            CallbackQueryEventArgs callbackQueryEventArgs)
         {
             await Bot.AnswerCallbackQueryAsync(callbackQueryEventArgs.CallbackQuery.Id,
                 $"Received {callbackQueryEventArgs.CallbackQuery.Data}");
