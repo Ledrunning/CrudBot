@@ -7,40 +7,46 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using CrudBot.DAL.Repository;
-using DAL.Model;
+using CrudBot.Main.Model;
 using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Args;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.InlineKeyboardButtons;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.InputMessageContents;
 using Telegram.Bot.Types.ReplyMarkups;
 using File = System.IO.File;
 using User = Telegram.Bot.Types.User;
 
-namespace DAL
+namespace CrudBot.Main
 {
     internal class Program
     {
-        // Token;
-        private static readonly TelegramBotClient Bot = new TelegramBotClient("Your tokken!");
-
         private static readonly string JsonFilePath = Path.GetDirectoryName(
             Assembly.GetExecutingAssembly().Location);
 
         private static readonly string ConnectionString =
             ConfigurationManager.ConnectionStrings["DBConection"].ConnectionString;
 
+        private static readonly string BotToken =
+            ConfigurationManager.ConnectionStrings["BotToken"].ConnectionString;
+
+        // Token;
+        private static readonly TelegramBotClient Bot = new TelegramBotClient(BotToken);
+
         private static readonly CancellationTokenSource TokenSource = new CancellationTokenSource();
-        private static readonly CancellationToken _cancellationToken = TokenSource.Token;
+        private static readonly CancellationToken CancellationToken = TokenSource.Token;
 
         private static UserDto _userDto;
 
         private static readonly UserRepository UserRepository = new UserRepository(ConnectionString);
 
-        private static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
+            await UserRepository.CreateTable(CancellationToken);
+
             var jsonData = File.ReadAllText(Path.Combine(JsonFilePath, "users.json"));
 
             _userDto = JsonConvert.DeserializeObject<UserDto>(jsonData);
@@ -55,7 +61,7 @@ namespace DAL
 
             Console.WriteLine("Starting Ledrunner Bot.....");
 
-            var me = Bot.GetMeAsync().Result;
+            var me = await Bot.GetMeAsync();
 
             Console.Title = me.Username;
             Bot.StartReceiving();
@@ -196,7 +202,7 @@ namespace DAL
 
             else if (message.Text.StartsWith("/getusers")) // request DBUsers;
             {
-                var users = await UserRepository.ReadUsersAsync(_cancellationToken);
+                var users = await UserRepository.ReadUsersAsync(CancellationToken);
                 var telegramUsers = new User();
                 foreach (var user in users)
                 {
@@ -213,9 +219,9 @@ namespace DAL
 
             else if (message.Text.StartsWith("/filldata"))
             {
-                foreach (var user in _userDto.Users)
+                foreach (var user in _userDto.User)
                 {
-                    await UserRepository.AddUserAsync(user.Name, user.LastName, _cancellationToken);
+                    await UserRepository.AddUserAsync(user.Name, user.LastName, CancellationToken);
                 }
 
                 await Bot.SendTextMessageAsync(message.Chat.Id, "Database has been filled!",
@@ -224,7 +230,7 @@ namespace DAL
 
             else if (message.Text.StartsWith("/cleardatabase"))
             {
-                await UserRepository.DeleteAllAsync(_cancellationToken);
+                await UserRepository.DeleteAllAsync(CancellationToken);
 
                 await Bot.SendTextMessageAsync(message.Chat.Id, "Database has been cleared!",
                     replyMarkup: new ReplyKeyboardHide());

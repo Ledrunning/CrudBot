@@ -11,6 +11,7 @@ namespace CrudBot.DAL.Repository
     public class UserRepository
     {
         private readonly string _connectionString;
+
         public UserRepository(string connectionString)
         {
             _connectionString = connectionString;
@@ -21,6 +22,7 @@ namespace CrudBot.DAL.Repository
             using (var connection = new SqlConnection(_connectionString))
             {
                 command.Connection = connection;
+                command.CommandType = CommandType.Text;
                 await connection.OpenAsync(token);
                 await command.ExecuteNonQueryAsync(token);
 
@@ -33,10 +35,31 @@ namespace CrudBot.DAL.Repository
             return false;
         }
 
+        public async Task CreateTable(CancellationToken cancellationToken)
+        {
+            const string query = @"IF NOT EXISTS (
+	                                    SELECT
+		                                    *
+	                                    FROM
+		                                    sysobjects
+	                                    WHERE
+		                                    name = 'CrudBotUsers'
+		                                    and xtype = 'U'
+                                    ) CREATE TABLE [dbo].[CrudBotUsers] (
+                                            [Id] INTEGER IDENTITY(1,1) PRIMARY KEY,
+                                            [FirstName] NVARCHAR(255),
+                                            [LastName] NVARCHAR(255));";
+
+            var command = new SqlCommand();
+            command.CommandText = query;
+            await ExecuteAsync(command, cancellationToken);
+        }
+
         public async Task<bool> AddUserAsync(string firstName, string lastName, CancellationToken token)
         {
             var command = new SqlCommand();
-            command.CommandText = "INSERT INTO [dbo].[Users] (FirstName, LastName) VALUES(@firstName, @lastName)";
+            command.CommandText =
+                "INSERT INTO [dbo].[CrudBotUsers] (FirstName, LastName) VALUES(@firstName, @lastName)";
             command.Parameters.Add(new SqlParameter("@firstName", firstName));
             command.Parameters.Add(new SqlParameter("@lastName", lastName));
 
@@ -47,7 +70,7 @@ namespace CrudBot.DAL.Repository
         {
             var command = new SqlCommand();
 
-            command.CommandText = @"UPDATE [dbo].[Users]
+            command.CommandText = @"UPDATE [dbo].[CrudBotUsers]
                                     SET FirstName = @firstName, LastName = @lastName 
                                     WHERE Id = @Id";
 
@@ -61,7 +84,7 @@ namespace CrudBot.DAL.Repository
         public async Task<bool> DeleteUsersAsync(int id, CancellationToken token)
         {
             var command = new SqlCommand();
-            command.CommandText = "DELETE FROM [dbo].[Users] WHERE Id = @Id";
+            command.CommandText = "DELETE FROM [dbo].[CrudBotUsers] WHERE Id = @Id";
             command.Parameters.Add(new SqlParameter("Id", id));
 
             return await ExecuteAsync(command, token);
@@ -70,7 +93,7 @@ namespace CrudBot.DAL.Repository
         public async Task<bool> DeleteAllAsync(CancellationToken token)
         {
             var command = new SqlCommand();
-            command.CommandText = "DELETE FROM [dbo].[Users]";
+            command.CommandText = "DELETE FROM [dbo].[CrudBotUsers]";
             return await ExecuteAsync(command, token);
         }
 
@@ -83,7 +106,7 @@ namespace CrudBot.DAL.Repository
                                        [Id],
                                        [FirstName],
                                        [LastName]
-                                       FROM [dbo].[Users]";
+                                       FROM [dbo].[CrudBotUsers]";
 
                 var command = new SqlCommand(query, connection);
 
