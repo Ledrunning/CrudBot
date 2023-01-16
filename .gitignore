@@ -353,3 +353,5 @@ healthchecksdb
 /EA.DesktopApp/vcruntime140.dll
 /EA.DesktopApp/vcruntime140_1.dll
 /EA.DesktopApp/version_string.inc
+/CrudBot.Main/appsettings.json
+/CrudBot.Main/appsettings.Development.json

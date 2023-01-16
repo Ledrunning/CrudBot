@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CrudBot.DAL1\CrudBot.DAL.csproj" />
+    <ProjectReference Include="..\CrudBot.DAL\CrudBot.DAL.csproj" />
   </ItemGroup>
 
 </Project>
