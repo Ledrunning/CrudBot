@@ -1,6 +1,6 @@
-﻿using CrudBot.DAL1.Entitiy;
+﻿using CrudBot.DAL.Entitiy;
 
-namespace CrudBot.DAL1.Contracts;
+namespace CrudBot.DAL.Contracts;
 
 public interface IUserRepository
 {

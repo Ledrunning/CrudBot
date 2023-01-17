@@ -1,9 +1,9 @@
 ﻿using System.Data;
-using CrudBot.DAL1.Contracts;
-using CrudBot.DAL1.Entitiy;
+using CrudBot.DAL.Contracts;
+using CrudBot.DAL.Entitiy;
 using Microsoft.Data.SqlClient;
 
-namespace CrudBot.DAL1.Repository;
+namespace CrudBot.DAL.Repository;
 
 public class UserRepository : IUserRepository
 {
@@ -22,12 +22,7 @@ public class UserRepository : IUserRepository
         await connection.OpenAsync(token);
         await command.ExecuteNonQueryAsync(token);
 
-        if (command.Connection.State == ConnectionState.Open)
-        {
-            return true;
-        }
-
-        return false;
+        return command.Connection.State == ConnectionState.Open;
     }
 
     public async Task CreateTable(CancellationToken cancellationToken)

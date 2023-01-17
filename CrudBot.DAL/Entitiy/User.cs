@@ -1,4 +1,4 @@
-﻿namespace CrudBot.DAL1.Entitiy
+﻿namespace CrudBot.DAL.Entitiy
 {
     public class User
     {

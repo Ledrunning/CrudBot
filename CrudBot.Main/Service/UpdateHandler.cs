@@ -1,4 +1,8 @@
+using System.Reflection;
+using CrudBot.DAL.Contracts;
+using CrudBot.Main.Model;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -6,17 +10,25 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
+using File = System.IO.File;
 
 namespace CrudBot.Main.Service;
 
 public class UpdateHandler : IUpdateHandler
 {
+    private static readonly string? JsonFilePath = Path.GetDirectoryName(
+        Assembly.GetExecutingAssembly().Location);
+
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
+    private readonly IUserRepository _userRepository;
 
-    public UpdateHandler(ITelegramBotClient botClient, ILogger<UpdateHandler> logger)
+    public UpdateHandler(ITelegramBotClient botClient,
+        IUserRepository userRepository,
+        ILogger<UpdateHandler> logger)
     {
         _botClient = botClient;
+        _userRepository = userRepository;
         _logger = logger;
     }
 
@@ -78,10 +90,31 @@ public class UpdateHandler : IUpdateHandler
             "/request" => RequestContactAndLocation(_botClient, message, cancellationToken),
             "/inline_mode" => StartInlineQuery(_botClient, message, cancellationToken),
             "/throw" => FailingHandler(_botClient, message, cancellationToken),
+            "/fill_data" => FillDataAsync(_botClient, _userRepository, message, cancellationToken),
             _ => Usage(_botClient, message, cancellationToken)
         };
         var sentMessage = await action;
         _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+
+        static async Task<Message> FillDataAsync(ITelegramBotClient botClient, IUserRepository userrepository,
+            Message message,
+            CancellationToken cancellationToken)
+        {
+            var jsonData = await File.ReadAllTextAsync(Path.Combine(JsonFilePath!, "users.json"), cancellationToken);
+
+            var userDto = JsonConvert.DeserializeObject<UserDto>(jsonData);
+
+            foreach (var user in userDto.User)
+            {
+                await userrepository.AddUserAsync(user.Name!, user.LastName!, cancellationToken);
+            }
+
+
+            return await botClient.SendTextMessageAsync(
+                message.Chat.Id,
+                "Data has been filled!",
+                cancellationToken: cancellationToken);
+        }
 
         // Send inline keyboard
         // You can process responses in BotOnCallbackQueryReceived handler
@@ -195,7 +228,8 @@ public class UpdateHandler : IUpdateHandler
                                  "/remove      - remove custom keyboard\n" +
                                  "/photo       - send a photo\n" +
                                  "/request     - request location or contact\n" +
-                                 "/inline_mode - send keyboard with Inline Query";
+                                 "/inline_mode - send keyboard with Inline Query\n" +
+                                 "/fill_data   - Put data to database from user.json file";
 
             return await botClient.SendTextMessageAsync(
                 message.Chat.Id,
