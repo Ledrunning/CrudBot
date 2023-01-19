@@ -1,16 +1,16 @@
 ﻿namespace CrudBot.DAL.Entitiy
 {
-    public class User
+    public record User
     {
-        public User(long id, string fn, string ln)
+        public User(long id, string? firstName, string? lastName)
         {
             Id = id;
-            FirstName = fn;
-            LastName = ln;
+            FirstName = firstName;
+            LastName = lastName;
         }
 
         public long Id { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
     }
 }

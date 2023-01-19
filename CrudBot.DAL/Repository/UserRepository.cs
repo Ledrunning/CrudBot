@@ -71,7 +71,7 @@ public class UserRepository : IUserRepository
         return await ExecuteAsync(command, token);
     }
 
-    public async Task<bool> DeleteUsersAsync(int id, CancellationToken token)
+    public async Task<bool> DeleteUserAsync(long id, CancellationToken token)
     {
         var command = new SqlCommand();
         command.CommandText = "DELETE FROM [dbo].[CrudBotUsers] WHERE Id = @Id";
@@ -87,7 +87,7 @@ public class UserRepository : IUserRepository
         return await ExecuteAsync(command, token);
     }
 
-    public async Task<IList<User>> ReadUsersAsync(CancellationToken token)
+    public async Task<IList<User>> ReadAllAsync(CancellationToken token)
     {
         await using var connection = new SqlConnection(_connectionString);
         var users = new List<User>();
@@ -103,7 +103,8 @@ public class UserRepository : IUserRepository
         var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
         {
-            users.Add(new User(Convert.ToInt64(reader["Id"]), reader["FirstName"].ToString(),
+            users.Add(new User(Convert.ToInt64(reader["Id"]), 
+                reader["FirstName"].ToString(),
                 reader["LastName"].ToString()));
         }
 

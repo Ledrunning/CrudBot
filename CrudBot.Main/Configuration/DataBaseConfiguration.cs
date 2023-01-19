@@ -2,7 +2,7 @@
 
 internal class DataBaseConfiguration
 {
-    public static readonly string Configuration = "ConnectionString";
+    public static readonly string Configuration = "DatabaseConfiguration";
 
     public string ConnectionString { get; set; } = "";
 }

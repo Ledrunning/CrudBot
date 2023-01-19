@@ -1,8 +1,5 @@
-using System.Reflection;
-using CrudBot.DAL.Contracts;
-using CrudBot.Main.Model;
+using CrudBot.Main.Abstraction;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -10,29 +7,25 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
-using File = System.IO.File;
 
 namespace CrudBot.Main.Service;
 
 public class UpdateHandler : IUpdateHandler
 {
-    private static readonly string? JsonFilePath = Path.GetDirectoryName(
-        Assembly.GetExecutingAssembly().Location);
-
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
-    private readonly IUserRepository _userRepository;
+    private readonly IUserService _userService;
 
     public UpdateHandler(ITelegramBotClient botClient,
-        IUserRepository userRepository,
+        IUserService userService,
         ILogger<UpdateHandler> logger)
     {
         _botClient = botClient;
-        _userRepository = userRepository;
+        _userService = userService;
         _logger = logger;
     }
 
-    public async Task HandleUpdateAsync(ITelegramBotClient _, Update update, CancellationToken cancellationToken)
+    public async Task HandleUpdateAsync(ITelegramBotClient _, Update update, CancellationToken token)
     {
         var handler = update switch
         {
@@ -42,13 +35,13 @@ public class UpdateHandler : IUpdateHandler
             // UpdateType.ShippingQuery:
             // UpdateType.PreCheckoutQuery:
             // UpdateType.Poll:
-            { Message: { } message } => BotOnMessageReceived(message, cancellationToken),
-            { EditedMessage: { } message } => BotOnMessageReceived(message, cancellationToken),
-            { CallbackQuery: { } callbackQuery } => BotOnCallbackQueryReceived(callbackQuery, cancellationToken),
-            { InlineQuery: { } inlineQuery } => BotOnInlineQueryReceived(inlineQuery, cancellationToken),
+            { Message: { } message } => BotOnMessageReceived(message, token),
+            { EditedMessage: { } message } => BotOnMessageReceived(message, token),
+            { CallbackQuery: { } callbackQuery } => BotOnCallbackQueryReceived(callbackQuery, token),
+            { InlineQuery: { } inlineQuery } => BotOnInlineQueryReceived(inlineQuery, token),
             { ChosenInlineResult: { } chosenInlineResult } => BotOnChosenInlineResultReceived(chosenInlineResult,
-                cancellationToken),
-            _ => UnknownUpdateHandlerAsync(update, cancellationToken)
+                token),
+            _ => UnknownUpdateHandlerAsync(update, token)
         };
 
         await handler;
@@ -57,14 +50,14 @@ public class UpdateHandler : IUpdateHandler
     public async Task HandlePollingErrorAsync(ITelegramBotClient botClient, Exception exception,
         CancellationToken cancellationToken)
     {
-        var ErrorMessage = exception switch
+        var errorMessage = exception switch
         {
             ApiRequestException apiRequestException =>
                 $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
             _ => exception.ToString()
         };
 
-        _logger.LogInformation("HandleError: {ErrorMessage}", ErrorMessage);
+        _logger.LogInformation("HandleError: {ErrorMessage}", errorMessage);
 
         // Cooldown in case of network connection error
         if (exception is RequestException)
@@ -89,31 +82,23 @@ public class UpdateHandler : IUpdateHandler
             "/photo" => SendFile(_botClient, message, cancellationToken),
             "/request" => RequestContactAndLocation(_botClient, message, cancellationToken),
             "/inline_mode" => StartInlineQuery(_botClient, message, cancellationToken),
-            "/throw" => FailingHandler(_botClient, message, cancellationToken),
-            "/fill_data" => FillDataAsync(_botClient, _userRepository, message, cancellationToken),
+            "/throw" => throw new IndexOutOfRangeException(),
+            "/fill_data" => FillDataAsync(_botClient, _userService, message, cancellationToken),
             _ => Usage(_botClient, message, cancellationToken)
         };
         var sentMessage = await action;
         _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
 
-        static async Task<Message> FillDataAsync(ITelegramBotClient botClient, IUserRepository userrepository,
+        static async Task<Message> FillDataAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
-            CancellationToken cancellationToken)
+            CancellationToken token)
         {
-            var jsonData = await File.ReadAllTextAsync(Path.Combine(JsonFilePath!, "users.json"), cancellationToken);
-
-            var userDto = JsonConvert.DeserializeObject<UserDto>(jsonData);
-
-            foreach (var user in userDto.User)
-            {
-                await userrepository.AddUserAsync(user.Name!, user.LastName!, cancellationToken);
-            }
-
+            await userService.FillData(token);
 
             return await botClient.SendTextMessageAsync(
                 message.Chat.Id,
                 "Data has been filled!",
-                cancellationToken: cancellationToken);
+                cancellationToken: token);
         }
 
         // Send inline keyboard
@@ -250,16 +235,6 @@ public class UpdateHandler : IUpdateHandler
                 replyMarkup: inlineKeyboard,
                 cancellationToken: cancellationToken);
         }
-
-#pragma warning disable RCS1163 // Unused parameter.
-#pragma warning disable IDE0060 // Remove unused parameter
-        static Task<Message> FailingHandler(ITelegramBotClient botClient, Message message,
-            CancellationToken cancellationToken)
-        {
-            throw new IndexOutOfRangeException();
-        }
-#pragma warning restore IDE0060 // Remove unused parameter
-#pragma warning restore RCS1163 // Unused parameter.
     }
 
     // Process Inline Keyboard callback data
