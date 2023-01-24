@@ -45,9 +45,9 @@ internal class UserService : IUserService
         await _userRepository.AddUserAsync(firstName, secondName, token);
     }
 
-    public async Task ReadAllUsersAsync(CancellationToken token)
+    public async Task<IList<User>> ReadAllUsersAsync(CancellationToken token)
     {
-        await _userRepository.ReadAllAsync(token);
+        return await _userRepository.ReadAllAsync(token);
     }
 
     public async Task EditUserByIdAsync(UserDto user, CancellationToken token)
