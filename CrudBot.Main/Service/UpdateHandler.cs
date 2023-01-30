@@ -1,5 +1,4 @@
 using CrudBot.Main.Abstraction;
-using CrudBot.Main.Exceptions;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -121,10 +120,11 @@ public class UpdateHandler : IUpdateHandler
             Message message,
             CancellationToken token)
         {
-            // Stub/
-            await userService.DeleteUserByIdAsync(1, token);
+            //TODO BUG! remove the stub/
+            int.TryParse(message.Text, out var id);
+            await userService.DeleteUserByIdAsync(id, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                $"", cancellationToken: token);
+                $"User with Id:{id} has been deleted successfully", cancellationToken: token);
         }
 
         static async Task<Message> DeleteAllPersonsAsync(ITelegramBotClient botClient, IUserService userService,

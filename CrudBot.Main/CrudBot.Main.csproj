@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CrudBot.DAL\CrudBot.DAL.csproj" />
+    <ProjectReference Include="..\CrudBot.Exceptions\CrudBot.Exceptions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

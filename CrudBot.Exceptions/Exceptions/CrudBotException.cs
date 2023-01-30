@@ -1,4 +1,4 @@
-﻿namespace CrudBot.Main.Exceptions;
+﻿namespace CrudBot.Exceptions.Exceptions;
 
 public class CrudBotException : Exception
 {
@@ -6,6 +6,10 @@ public class CrudBotException : Exception
     private readonly string? _errorMessage;
 
     public CrudBotException(string message) : base(message)
+    {
+    }
+
+    public CrudBotException(string? message, Exception? innerException) : base(message, innerException)
     {
     }
 
