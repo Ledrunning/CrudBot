@@ -1,10 +1,10 @@
 using CrudBot.Main.Abstraction;
+using CrudBot.Weather.Contract;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -15,14 +15,16 @@ public class UpdateHandler : IUpdateHandler
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
     private readonly IUserService _userService;
+    private readonly IOpenWeatherRestService _openWeatherService;
 
     public UpdateHandler(ITelegramBotClient botClient,
         IUserService userService,
-        ILogger<UpdateHandler> logger)
+        ILogger<UpdateHandler> logger, IOpenWeatherRestService openWeatherService)
     {
         _botClient = botClient;
         _userService = userService;
         _logger = logger;
+        _openWeatherService = openWeatherService;
     }
 
     public async Task HandleUpdateAsync(ITelegramBotClient _, Update update, CancellationToken token)
@@ -80,6 +82,7 @@ public class UpdateHandler : IUpdateHandler
             "/get_persons" => GetAllPersonsAsync(_botClient, _userService, message, cancellationToken),
             "/delete_person" => DeletePersonByIdAsync(_botClient, _userService, message, cancellationToken),
             "/delete_all" => DeleteAllPersonsAsync(_botClient, _userService, message, cancellationToken),
+            "/get_weather" => GetWeather(_botClient, _openWeatherService, message, cancellationToken),
 
             "/throw" => throw new IndexOutOfRangeException(),
             _ => Usage(_botClient, message, cancellationToken)
@@ -136,6 +139,19 @@ public class UpdateHandler : IUpdateHandler
                 "All clear!", cancellationToken: token);
         }
 
+        //TODO : hardcoded city!
+        static async Task<Message> GetWeather(ITelegramBotClient botClient, IOpenWeatherRestService openWeatherService,
+            Message message,
+            CancellationToken token)
+        {
+            var weather = await openWeatherService.GetWeatherFromOpenWeatherApi("Berlin", token);
+
+            var result = $"Weather in Berlin: T={weather.Main.Temp}, H%= {weather.Main.Humidity}, P={weather.Main.Pressure}";
+
+            return await botClient.SendTextMessageAsync(message.Chat.Id,
+                "All clear!", cancellationToken: token);
+        }
+
         static async Task<Message> Usage(ITelegramBotClient botClient, Message message,
             CancellationToken cancellationToken)
         {
@@ -143,7 +159,8 @@ public class UpdateHandler : IUpdateHandler
                                  "/fill_data       - Put data to database from user.json file\n" +
                                  "/get_persons     - Get all persons from database\n" +
                                  "/delete_person   - Delete person by Id\n" +
-                                 "/delete_all      - Delete all persons from database\n";
+                                 "/delete_all      - Delete all persons from database\n" +
+                                 "/get_weather     - Get current weather";
 
             return await botClient.SendTextMessageAsync(
                 message.Chat.Id,

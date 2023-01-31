@@ -4,6 +4,8 @@ using CrudBot.Main;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Configuration;
 using CrudBot.Main.Service;
+using CrudBot.Weather.Contract;
+using CrudBot.Weather.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot;
@@ -18,11 +20,16 @@ try
                 context.Configuration.GetSection(BotConfiguration.Configuration));
             services.Configure<DataBaseConfiguration>(
                 context.Configuration.GetSection(DataBaseConfiguration.Configuration));
+            services.Configure<OpenWeatherApi>(
+                context.Configuration.GetSection(OpenWeatherApi.Configuration));
 
             var provider = services.BuildServiceProvider();
 
             var connectionString = provider.GetConfiguration<DataBaseConfiguration>().ConnectionString;
             var botConfig = provider.GetConfiguration<BotConfiguration>();
+            var apiKey = provider.GetConfiguration<OpenWeatherApi>().ApiKey;
+            var baseUri = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
+            var timeOut = provider.GetConfiguration<OpenWeatherApi>().TimeOut;
 
             // Register named HttpClient to benefits from IHttpClientFactory
             // and consume it with ITelegramBotClient typed client.
@@ -44,6 +51,9 @@ try
             services.AddScoped<ReceiverService>();
             services.AddHostedService<PollingService>();
             services.AddScoped<IUserService, UserService>();
+
+            var openWeatherService = new OpenWeatherRestService(apiKey, baseUri, timeOut);
+            services.AddSingleton<IOpenWeatherRestService>(openWeatherService);
         })
         .Build();
 

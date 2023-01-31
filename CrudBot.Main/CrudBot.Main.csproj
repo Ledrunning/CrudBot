@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CrudBot.DAL\CrudBot.DAL.csproj" />
     <ProjectReference Include="..\CrudBot.Exceptions\CrudBot.Exceptions.csproj" />
+    <ProjectReference Include="..\CrudBot.Weather\CrudBot.Weather.csproj" />
   </ItemGroup>
 
   <ItemGroup>

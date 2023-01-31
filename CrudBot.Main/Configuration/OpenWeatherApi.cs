@@ -6,4 +6,5 @@ public class OpenWeatherApi
 
     public string BaseUrl { get; set; } = "";
     public string ApiKey { get; set; } = "";
+    public int TimeOut { get; set; }
 }
