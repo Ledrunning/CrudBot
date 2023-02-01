@@ -1,4 +1,5 @@
 using CrudBot.Main.Abstraction;
+using CrudBot.Main.Helpers;
 using CrudBot.Weather.Contract;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot;
@@ -14,8 +15,8 @@ public class UpdateHandler : IUpdateHandler
 {
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
-    private readonly IUserService _userService;
     private readonly IOpenWeatherRestService _openWeatherService;
+    private readonly IUserService _userService;
 
     public UpdateHandler(ITelegramBotClient botClient,
         IUserService userService,
@@ -116,7 +117,7 @@ public class UpdateHandler : IUpdateHandler
             }
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                    "Done!", cancellationToken: token);
+                "Done!", cancellationToken: token);
         }
 
         static async Task<Message> DeletePersonByIdAsync(ITelegramBotClient botClient, IUserService userService,
@@ -139,17 +140,19 @@ public class UpdateHandler : IUpdateHandler
                 "All clear!", cancellationToken: token);
         }
 
-        //TODO : hardcoded city!
+        //TODO : remove hardcoded city!
         static async Task<Message> GetWeather(ITelegramBotClient botClient, IOpenWeatherRestService openWeatherService,
             Message message,
             CancellationToken token)
         {
-            var weather = await openWeatherService.GetWeatherFromOpenWeatherApi("Berlin", token);
+            var weather = await openWeatherService.GetWeatherFromOpenWeatherApi("London", token);
 
-            var result = $"Weather in Berlin: T={weather.Main.Temp}, H%= {weather.Main.Humidity}, P={weather.Main.Pressure}";
+            var result =
+                $"Weather in Berlin: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp)}," +
+                $" H%= {weather.Main.Humidity:#.##}, P={weather.Main.Pressure}";
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                "All clear!", cancellationToken: token);
+                result, cancellationToken: token);
         }
 
         static async Task<Message> Usage(ITelegramBotClient botClient, Message message,
@@ -185,6 +188,7 @@ public class UpdateHandler : IUpdateHandler
             $"Received {callbackQuery.Data}",
             cancellationToken: cancellationToken);
     }
+
     private Task UnknownUpdateHandlerAsync(Update update)
     {
         _logger.LogInformation("Unknown update type: {UpdateType}", update.Type);

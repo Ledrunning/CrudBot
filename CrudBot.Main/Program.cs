@@ -8,6 +8,7 @@ using CrudBot.Weather.Contract;
 using CrudBot.Weather.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Globalization;
 using Telegram.Bot;
 
 try
@@ -28,8 +29,10 @@ try
             var connectionString = provider.GetConfiguration<DataBaseConfiguration>().ConnectionString;
             var botConfig = provider.GetConfiguration<BotConfiguration>();
             var apiKey = provider.GetConfiguration<OpenWeatherApi>().ApiKey;
-            var baseUri = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
+            var baseUrl = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
             var timeOut = provider.GetConfiguration<OpenWeatherApi>().TimeOut;
+            var baseGeourl= provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
+            var cityLimit = provider.GetConfiguration<OpenWeatherApi>().GeoCityLimit;
 
             // Register named HttpClient to benefits from IHttpClientFactory
             // and consume it with ITelegramBotClient typed client.
@@ -52,10 +55,17 @@ try
             services.AddHostedService<PollingService>();
             services.AddScoped<IUserService, UserService>();
 
-            var openWeatherService = new OpenWeatherRestService(apiKey, baseUri, timeOut);
+            var geoWebService = new OpenWeatherRestGeoService(apiKey, baseGeourl, cityLimit, timeOut);
+            services.AddSingleton<IOpenWeatherGeoRestService>(geoWebService);
+
+            var openWeatherService = new OpenWeatherRestService(geoWebService, apiKey, baseUrl, timeOut);
             services.AddSingleton<IOpenWeatherRestService>(openWeatherService);
         })
         .Build();
+
+        var cultureInfo = new CultureInfo("en-EN");
+        CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+        CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
     await host.RunAsync();
 }
