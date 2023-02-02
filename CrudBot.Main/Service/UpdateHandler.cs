@@ -88,6 +88,7 @@ public class UpdateHandler : IUpdateHandler
             "/throw" => throw new IndexOutOfRangeException(),
             _ => Usage(_botClient, message, cancellationToken)
         };
+
         var sentMessage = await action;
         _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
 
@@ -148,8 +149,8 @@ public class UpdateHandler : IUpdateHandler
             var weather = await openWeatherService.GetWeatherFromOpenWeatherApi("London", token);
 
             var result =
-                $"Weather in Berlin: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp)}," +
-                $" H%= {weather.Main.Humidity:#.##}, P={weather.Main.Pressure}";
+                $"Weather in Berlin: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp):#.##}," +
+                $" H%= {weather.Main.Humidity}, P={weather.Main.Pressure}";
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 result, cancellationToken: token);
@@ -158,7 +159,7 @@ public class UpdateHandler : IUpdateHandler
         static async Task<Message> Usage(ITelegramBotClient botClient, Message message,
             CancellationToken cancellationToken)
         {
-            const string usage = "Usage:\n" +
+            const string usage = "Hi! I'm Simple Crud Boy! You can use the following commands:\n" +
                                  "/fill_data       - Put data to database from user.json file\n" +
                                  "/get_persons     - Get all persons from database\n" +
                                  "/delete_person   - Delete person by Id\n" +
