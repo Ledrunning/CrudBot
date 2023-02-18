@@ -1,7 +1,10 @@
+using System.Net.Sockets;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Helpers;
 using CrudBot.Weather.Contract;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
+using Microsoft.Identity.Client;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -17,6 +20,9 @@ public class UpdateHandler : IUpdateHandler
     private readonly ILogger<UpdateHandler> _logger;
     private readonly IOpenWeatherRestService _openWeatherService;
     private readonly IUserService _userService;
+
+    private bool _isWeather;
+    private bool _isUserDelete;
 
     public UpdateHandler(ITelegramBotClient botClient,
         IUserService userService,
@@ -77,20 +83,69 @@ public class UpdateHandler : IUpdateHandler
             return;
         }
 
-        var action = messageText.Split(' ')[0] switch
+        Task<Message>? action = null;
+        if (messageText.Split(' ')[0] == "/fill_data")
         {
-            "/fill_data" => FillDataAsync(_botClient, _userService, message, cancellationToken),
-            "/get_persons" => GetAllPersonsAsync(_botClient, _userService, message, cancellationToken),
-            "/delete_person" => DeletePersonByIdAsync(_botClient, _userService, message, cancellationToken),
-            "/delete_all" => DeleteAllPersonsAsync(_botClient, _userService, message, cancellationToken),
-            "/get_weather" => GetWeather(_botClient, _openWeatherService, message, cancellationToken),
-
-            "/throw" => throw new IndexOutOfRangeException(),
-            _ => Usage(_botClient, message, cancellationToken)
-        };
+            action = FillDataAsync(_botClient, _userService, message, cancellationToken);
+        }
+        else if (messageText.Split(' ')[0] == "/get_persons")
+        {
+            action = GetAllPersonsAsync(_botClient, _userService, message, cancellationToken);
+        }
+        else if (messageText.Split(' ')[0] == "/delete_person")
+        {
+            _isUserDelete = true;
+            action = _botClient.SendTextMessageAsync(message.Chat.Id,"Enter person Id!", cancellationToken: cancellationToken);
+        }
+        else if (_isUserDelete)
+        {
+            action = DeletePersonByIdAsync(_botClient, _userService, message, cancellationToken);
+            _isUserDelete = false;
+        }
+        else if (messageText.Split(' ')[0] == "/delete_all")
+        {
+            action = DeleteAllPersonsAsync(_botClient, _userService, message, cancellationToken);
+        }
+        else if (messageText.Split(' ')[0] == "/get_weather")
+        {
+            _isWeather = true;
+            action = EnterCityName(_botClient, message, cancellationToken);
+        }
+        else if (_isWeather)
+        {
+            action = GetWeather(_botClient, _openWeatherService, message, cancellationToken);
+            _isWeather = false;
+        }
+        else if (messageText.Split(' ')[0] == "/throw")
+        {
+            throw new IndexOutOfRangeException();
+        }
+        else
+        {
+            action = Usage(_botClient, message, cancellationToken);
+        }
 
         var sentMessage = await action;
         _logger.LogInformation("The message was sent with id: {SentMessageId}", sentMessage.MessageId);
+
+        static async Task<Message> Usage(ITelegramBotClient botClient, Message message,
+            CancellationToken cancellationToken)
+        {
+            const string usage = "Hi! I'm Simple Crud Boy! You can use the following commands:\n" +
+                                 "/fill_data       - Put data to database from user.json file\n" +
+                                 "/get_persons     - Get all persons from database\n" +
+                                 "/add_person      - Add person into database\n" +
+                                 "/edit_person     - Edit person in database\n" +
+                                 "/delete_person   - Delete person by Id\n" +
+                                 "/delete_all      - Delete all persons from database\n" +
+                                 "/get_weather     - Get current weather";
+
+            return await botClient.SendTextMessageAsync(
+                message.Chat.Id,
+                usage,
+                replyMarkup: new ReplyKeyboardRemove(),
+                cancellationToken: cancellationToken);
+        }
 
         static async Task<Message> FillDataAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
@@ -121,12 +176,34 @@ public class UpdateHandler : IUpdateHandler
                 "Done!", cancellationToken: token);
         }
 
+        //TODO remove the stub
+        static async Task<Message> AddPerson(ITelegramBotClient botClient, IUserService userService,
+            Message message, string firstName, string lastName,
+            CancellationToken token)
+        {
+            await userService.AddUserAsync(firstName, lastName, token);
+            return await botClient.SendTextMessageAsync(message.Chat.Id,
+                $"User with Name:{firstName} {lastName} has been added successfully", cancellationToken: token);
+        }
+
+        static async Task<Message> EditPerson(ITelegramBotClient botClient, IUserService userService,
+            Message message,
+            CancellationToken token)
+        {
+            _ = int.TryParse(message.Text, out var id);
+
+            await userService.GetUserAsync(id, token);
+
+            await userService.EditUserByIdAsync(id, token);
+            return await botClient.SendTextMessageAsync(message.Chat.Id,
+                $"User with Name:{firstName} {lastName} has been added successfully", cancellationToken: token);
+        }
+
         static async Task<Message> DeletePersonByIdAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
             CancellationToken token)
         {
-            //TODO BUG! remove the stub/
-            int.TryParse(message.Text, out var id);
+            _ = int.TryParse(message.Text, out var id);
             await userService.DeleteUserByIdAsync(id, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 $"User with Id:{id} has been deleted successfully", cancellationToken: token);
@@ -141,36 +218,33 @@ public class UpdateHandler : IUpdateHandler
                 "All clear!", cancellationToken: token);
         }
 
-        //TODO : remove hardcoded city!
+        static async Task<Message> EnterCityName(ITelegramBotClient botClient, Message message, CancellationToken token)
+        {
+            return await botClient.SendTextMessageAsync(message.Chat.Id,
+                "Enter the city name!", cancellationToken: token);
+        }
+
         static async Task<Message> GetWeather(ITelegramBotClient botClient, IOpenWeatherRestService openWeatherService,
             Message message,
             CancellationToken token)
         {
-            var weather = await openWeatherService.GetWeatherFromOpenWeatherApi("London", token);
+            var isMatch = message.Text != null && Regex.IsMatch(message.Text, @"^[a-zA-Z]+$");
+
+            if (!isMatch)
+            {
+                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                    "Please, enter a valid city name!", cancellationToken: token);
+            }
+
+            var weather = await openWeatherService.GetWeatherFromOpenWeatherApi(message.Text, token);
 
             var result =
-                $"Weather in Berlin: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp):#.##}," +
+                $"Weather in {message.Text}: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp):#.##}," +
                 $" H%= {weather.Main.Humidity}, P={weather.Main.Pressure}";
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 result, cancellationToken: token);
-        }
 
-        static async Task<Message> Usage(ITelegramBotClient botClient, Message message,
-            CancellationToken cancellationToken)
-        {
-            const string usage = "Hi! I'm Simple Crud Boy! You can use the following commands:\n" +
-                                 "/fill_data       - Put data to database from user.json file\n" +
-                                 "/get_persons     - Get all persons from database\n" +
-                                 "/delete_person   - Delete person by Id\n" +
-                                 "/delete_all      - Delete all persons from database\n" +
-                                 "/get_weather     - Get current weather";
-
-            return await botClient.SendTextMessageAsync(
-                message.Chat.Id,
-                usage,
-                replyMarkup: new ReplyKeyboardRemove(),
-                cancellationToken: cancellationToken);
         }
     }
 

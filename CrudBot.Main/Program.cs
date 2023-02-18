@@ -31,7 +31,7 @@ try
             var apiKey = provider.GetConfiguration<OpenWeatherApi>().ApiKey;
             var baseUrl = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
             var timeOut = provider.GetConfiguration<OpenWeatherApi>().TimeOut;
-            var baseGeourl= provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
+            var baseGeoUrl= provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
             var cityLimit = provider.GetConfiguration<OpenWeatherApi>().GeoCityLimit;
 
             // Register named HttpClient to benefits from IHttpClientFactory
@@ -55,7 +55,7 @@ try
             services.AddHostedService<PollingService>();
             services.AddScoped<IUserService, UserService>();
 
-            var geoWebService = new OpenWeatherRestGeoService(apiKey, baseGeourl, cityLimit, timeOut);
+            var geoWebService = new OpenWeatherRestGeoService(apiKey, baseGeoUrl, cityLimit, timeOut);
             services.AddSingleton<IOpenWeatherGeoRestService>(geoWebService);
 
             var openWeatherService = new OpenWeatherRestService(geoWebService, apiKey, baseUrl, timeOut);

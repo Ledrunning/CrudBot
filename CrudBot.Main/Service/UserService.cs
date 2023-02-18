@@ -1,11 +1,11 @@
 ﻿using System.Reflection;
 using CrudBot.DAL.Contracts;
 using CrudBot.DAL.Entitiy;
+using CrudBot.Exceptions.Exceptions;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Model;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using CrudBot.Exceptions.Exceptions;
 
 namespace CrudBot.Main.Service;
 
@@ -100,6 +100,18 @@ internal class UserService : IUserService
         catch (Exception e)
         {
             _logger.LogError("Error delete all users: {e}", e);
+        }
+    }
+
+    public async Task GetUserAsync(long id, CancellationToken token)
+    {
+        try
+        {
+            await _userRepository.GetUserAsync(id, token);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError("Error to getting user by Id: {e}", e);
         }
     }
 }

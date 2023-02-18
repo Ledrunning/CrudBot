@@ -14,17 +14,6 @@ public class UserRepository : IUserRepository
         _connectionString = connectionString;
     }
 
-    private async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
-    {
-        await using var connection = new SqlConnection(_connectionString);
-        command.Connection = connection;
-        command.CommandType = CommandType.Text;
-        await connection.OpenAsync(token);
-        await command.ExecuteNonQueryAsync(token);
-
-        return command.Connection.State == ConnectionState.Open;
-    }
-
     public async Task CreateTable(CancellationToken cancellationToken)
     {
         const string query = @"IF NOT EXISTS (
@@ -103,11 +92,35 @@ public class UserRepository : IUserRepository
         var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
         {
-            users.Add(new User(Convert.ToInt64(reader["Id"]), 
+            users.Add(new User(Convert.ToInt64(reader["Id"]),
                 reader["FirstName"].ToString(),
                 reader["LastName"].ToString()));
         }
 
         return users;
+    }
+
+    private async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        command.Connection = connection;
+        command.CommandType = CommandType.Text;
+        await connection.OpenAsync(token);
+        await command.ExecuteNonQueryAsync(token);
+
+        return command.Connection.State == ConnectionState.Open;
+    }
+
+    public async Task<bool> GetUserAsync(long id, CancellationToken token)
+    {
+        var command = new SqlCommand();
+        command.CommandText = @"SELECT 
+                                       [Id],
+                                       [FirstName],
+                                       [LastName]
+                                       FROM [dbo].[CrudBotUsers]
+                                       WHERE Id = @Id";
+        command.Parameters.Add(new SqlParameter("@Id", id));
+        return await ExecuteAsync(command, token);
     }
 }

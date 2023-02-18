@@ -10,4 +10,5 @@ public interface IUserRepository
     Task<bool> DeleteUserAsync(long id, CancellationToken token);
     Task<bool> DeleteAllAsync(CancellationToken token);
     Task<IList<User>> ReadAllAsync(CancellationToken token);
+    Task<bool> GetUserAsync(long id, CancellationToken token);
 }
