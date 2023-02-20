@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using CrudBot.DAL.Contracts;
-using CrudBot.DAL.Entitiy;
+using CrudBot.DAL.Entity;
 using CrudBot.Exceptions.Exceptions;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Model;
@@ -103,15 +103,17 @@ internal class UserService : IUserService
         }
     }
 
-    public async Task GetUserAsync(long id, CancellationToken token)
+    public async Task<User> GetUserAsync(long id, CancellationToken token)
     {
         try
         {
-            await _userRepository.GetUserAsync(id, token);
+            return await _userRepository.GetUserAsync(id, token);
         }
         catch (Exception e)
         {
             _logger.LogError("Error to getting user by Id: {e}", e);
         }
+
+        return new User(default, default, default);
     }
 }

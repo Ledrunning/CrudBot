@@ -9,6 +9,7 @@ using CrudBot.Weather.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Globalization;
+using CrudBot.DAL.Entity;
 using Telegram.Bot;
 
 try

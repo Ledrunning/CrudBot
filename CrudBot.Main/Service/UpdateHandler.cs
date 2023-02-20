@@ -1,10 +1,9 @@
-using System.Net.Sockets;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Helpers;
 using CrudBot.Weather.Contract;
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
-using Microsoft.Identity.Client;
+using CrudBot.Main.Model;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -18,19 +17,23 @@ public class UpdateHandler : IUpdateHandler
 {
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
+    private readonly User _user;
     private readonly IOpenWeatherRestService _openWeatherService;
     private readonly IUserService _userService;
 
     private bool _isWeather;
     private bool _isUserDelete;
+    private bool _isUserAdd;
+    private bool _isUserEdit;
 
     public UpdateHandler(ITelegramBotClient botClient,
         IUserService userService,
-        ILogger<UpdateHandler> logger, IOpenWeatherRestService openWeatherService)
+        ILogger<UpdateHandler> logger, User user, IOpenWeatherRestService openWeatherService)
     {
         _botClient = botClient;
         _userService = userService;
         _logger = logger;
+        _user = user;
         _openWeatherService = openWeatherService;
     }
 
@@ -88,9 +91,31 @@ public class UpdateHandler : IUpdateHandler
         {
             action = FillDataAsync(_botClient, _userService, message, cancellationToken);
         }
+        else if (messageText.Split(' ')[0] == "/add_person")
+        {
+            _isUserAdd = true;
+            action = _botClient.SendTextMessageAsync(message.Chat.Id, "Enter person's Name and Last name with a space between!", cancellationToken: cancellationToken);
+        }
+        else if (_isUserAdd)
+        {
+            action = AddPersonAsync(_botClient, _userService, message, cancellationToken);
+            _isUserAdd = false;
+        }
         else if (messageText.Split(' ')[0] == "/get_persons")
         {
             action = GetAllPersonsAsync(_botClient, _userService, message, cancellationToken);
+        }
+        else if (messageText.Split(' ')[0] == "/edit_person")
+        {
+            _isUserEdit = true;
+            action = _botClient.SendTextMessageAsync(message.Chat.Id, "Enter person Id!", cancellationToken: cancellationToken);
+        }
+        else if (_isUserEdit)
+        {
+            _ = long.TryParse(message.Text, out var id);
+            var user = await _userService.GetUserAsync(id, cancellationToken);
+            action = _botClient.SendTextMessageAsync(message.Chat.Id, $"{user.FirstName} {user.LastName}", cancellationToken: cancellationToken);
+            _isUserEdit = false;
         }
         else if (messageText.Split(' ')[0] == "/delete_person")
         {
@@ -109,11 +134,11 @@ public class UpdateHandler : IUpdateHandler
         else if (messageText.Split(' ')[0] == "/get_weather")
         {
             _isWeather = true;
-            action = EnterCityName(_botClient, message, cancellationToken);
+            action = EnterCityNameAsync(_botClient, message, cancellationToken);
         }
         else if (_isWeather)
         {
-            action = GetWeather(_botClient, _openWeatherService, message, cancellationToken);
+            action = GetWeatherAsync(_botClient, _openWeatherService, message, cancellationToken);
             _isWeather = false;
         }
         else if (messageText.Split(' ')[0] == "/throw")
@@ -133,8 +158,8 @@ public class UpdateHandler : IUpdateHandler
         {
             const string usage = "Hi! I'm Simple Crud Boy! You can use the following commands:\n" +
                                  "/fill_data       - Put data to database from user.json file\n" +
-                                 "/get_persons     - Get all persons from database\n" +
                                  "/add_person      - Add person into database\n" +
+                                 "/get_persons     - Get all persons from database\n" +
                                  "/edit_person     - Edit person in database\n" +
                                  "/delete_person   - Delete person by Id\n" +
                                  "/delete_all      - Delete all persons from database\n" +
@@ -176,34 +201,49 @@ public class UpdateHandler : IUpdateHandler
                 "Done!", cancellationToken: token);
         }
 
-        //TODO remove the stub
-        static async Task<Message> AddPerson(ITelegramBotClient botClient, IUserService userService,
-            Message message, string firstName, string lastName,
-            CancellationToken token)
+        static async Task<Message> AddPersonAsync(ITelegramBotClient botClient, IUserService userService,
+            Message message, CancellationToken token)
         {
+            var regex = new Regex(@"^[A-Z][a-z]+\s[A-Z][a-z]+$");
+
+            if (message.Text == null || !regex.IsMatch(message.Text))
+            {
+                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                    "Please, enter a valid name and last name!", cancellationToken: token);
+            }
+
+            var match = regex.Match(message.Text);
+
+            var result = match.Groups[0].Value.Split(" ");
+            var firstName= result[0];
+            var lastName = result[1];
+
             await userService.AddUserAsync(firstName, lastName, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 $"User with Name:{firstName} {lastName} has been added successfully", cancellationToken: token);
+
         }
 
-        static async Task<Message> EditPerson(ITelegramBotClient botClient, IUserService userService,
+        static async Task<Message> EditPersonAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
-            CancellationToken token)
+            CancellationToken token, User _user)
         {
-            _ = int.TryParse(message.Text, out var id);
+            await userService.EditUserByIdAsync(new UserDto
+            {
+                Id = _user.Id,
+                FirstName = _user.FirstName,
+                LastName = _user.LastName
+            }, token);
 
-            await userService.GetUserAsync(id, token);
-
-            await userService.EditUserByIdAsync(id, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                $"User with Name:{firstName} {lastName} has been added successfully", cancellationToken: token);
+                $"User with Name:{_user.FirstName} {_user.LastName} has been added successfully", cancellationToken: token);
         }
 
         static async Task<Message> DeletePersonByIdAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
             CancellationToken token)
         {
-            _ = int.TryParse(message.Text, out var id);
+            _ = long.TryParse(message.Text, out var id);
             await userService.DeleteUserByIdAsync(id, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 $"User with Id:{id} has been deleted successfully", cancellationToken: token);
@@ -218,13 +258,13 @@ public class UpdateHandler : IUpdateHandler
                 "All clear!", cancellationToken: token);
         }
 
-        static async Task<Message> EnterCityName(ITelegramBotClient botClient, Message message, CancellationToken token)
+        static async Task<Message> EnterCityNameAsync(ITelegramBotClient botClient, Message message, CancellationToken token)
         {
             return await botClient.SendTextMessageAsync(message.Chat.Id,
                 "Enter the city name!", cancellationToken: token);
         }
 
-        static async Task<Message> GetWeather(ITelegramBotClient botClient, IOpenWeatherRestService openWeatherService,
+        static async Task<Message> GetWeatherAsync(ITelegramBotClient botClient, IOpenWeatherRestService openWeatherService,
             Message message,
             CancellationToken token)
         {

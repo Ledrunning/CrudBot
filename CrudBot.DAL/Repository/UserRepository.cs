@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using CrudBot.DAL.Contracts;
-using CrudBot.DAL.Entitiy;
+using CrudBot.DAL.Entity;
 using Microsoft.Data.SqlClient;
 
 namespace CrudBot.DAL.Repository;
@@ -111,16 +111,27 @@ public class UserRepository : IUserRepository
         return command.Connection.State == ConnectionState.Open;
     }
 
-    public async Task<bool> GetUserAsync(long id, CancellationToken token)
+    public async Task<User> GetUserAsync(long id, CancellationToken token)
     {
-        var command = new SqlCommand();
-        command.CommandText = @"SELECT 
+        await using var connection = new SqlConnection(_connectionString);
+        var users = new List<User>();
+        const string query = @"SELECT 
                                        [Id],
                                        [FirstName],
                                        [LastName]
                                        FROM [dbo].[CrudBotUsers]
                                        WHERE Id = @Id";
-        command.Parameters.Add(new SqlParameter("@Id", id));
-        return await ExecuteAsync(command, token);
+
+        var command = new SqlCommand(query, connection);
+
+        await connection.OpenAsync(token);
+        var reader = await command.ExecuteReaderAsync(token);
+        await reader.ReadAsync(token);
+
+        return new User(Convert.ToInt64(reader["Id"]),
+                reader["FirstName"].ToString(),
+                reader["LastName"].ToString());
+
+         
     }
 }
