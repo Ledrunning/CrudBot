@@ -124,6 +124,8 @@ public class UserRepository : IUserRepository
 
         var command = new SqlCommand(query, connection);
 
+        command.Parameters.Add(new SqlParameter("Id", id));
+
         await connection.OpenAsync(token);
         var reader = await command.ExecuteReaderAsync(token);
         await reader.ReadAsync(token);

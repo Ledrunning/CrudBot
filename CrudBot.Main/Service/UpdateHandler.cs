@@ -10,30 +10,29 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.InlineQueryResults;
 using Telegram.Bot.Types.ReplyMarkups;
-
 namespace CrudBot.Main.Service;
 
 public class UpdateHandler : IUpdateHandler
 {
     private readonly ITelegramBotClient _botClient;
     private readonly ILogger<UpdateHandler> _logger;
-    private readonly User _user;
     private readonly IOpenWeatherRestService _openWeatherService;
     private readonly IUserService _userService;
-
+    private static long _id;
     private bool _isWeather;
     private bool _isUserDelete;
     private bool _isUserAdd;
+    private bool _isGetUser;
     private bool _isUserEdit;
 
     public UpdateHandler(ITelegramBotClient botClient,
         IUserService userService,
-        ILogger<UpdateHandler> logger, User user, IOpenWeatherRestService openWeatherService)
+        ILogger<UpdateHandler> logger, 
+        IOpenWeatherRestService openWeatherService)
     {
         _botClient = botClient;
         _userService = userService;
         _logger = logger;
-        _user = user;
         _openWeatherService = openWeatherService;
     }
 
@@ -107,14 +106,23 @@ public class UpdateHandler : IUpdateHandler
         }
         else if (messageText.Split(' ')[0] == "/edit_person")
         {
-            _isUserEdit = true;
+            _isGetUser = true;
             action = _botClient.SendTextMessageAsync(message.Chat.Id, "Enter person Id!", cancellationToken: cancellationToken);
+        }
+        else if (_isGetUser)
+        {
+            _ = long.TryParse(message.Text, out var id);
+
+            _id = id;
+
+            var user = await _userService.GetUserAsync(id, cancellationToken);
+            action = _botClient.SendTextMessageAsync(message.Chat.Id, $"{user.FirstName} {user.LastName}", cancellationToken: cancellationToken);
+            _isGetUser = false;
+            _isUserEdit = true;
         }
         else if (_isUserEdit)
         {
-            _ = long.TryParse(message.Text, out var id);
-            var user = await _userService.GetUserAsync(id, cancellationToken);
-            action = _botClient.SendTextMessageAsync(message.Chat.Id, $"{user.FirstName} {user.LastName}", cancellationToken: cancellationToken);
+            action = EditPersonAsync(_botClient, _userService, message, cancellationToken);
             _isUserEdit = false;
         }
         else if (messageText.Split(' ')[0] == "/delete_person")
@@ -204,39 +212,41 @@ public class UpdateHandler : IUpdateHandler
         static async Task<Message> AddPersonAsync(ITelegramBotClient botClient, IUserService userService,
             Message message, CancellationToken token)
         {
-            var regex = new Regex(@"^[A-Z][a-z]+\s[A-Z][a-z]+$");
+            var validatedName = ValidateName(message, token);
 
-            if (message.Text == null || !regex.IsMatch(message.Text))
+            if (!validatedName.IsNameMatch)
             {
                 return await botClient.SendTextMessageAsync(message.Chat.Id,
                     "Please, enter a valid name and last name!", cancellationToken: token);
             }
 
-            var match = regex.Match(message.Text);
-
-            var result = match.Groups[0].Value.Split(" ");
-            var firstName= result[0];
-            var lastName = result[1];
-
-            await userService.AddUserAsync(firstName, lastName, token);
+            await userService.AddUserAsync(validatedName.FirstName, validatedName.LastName, token);
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                $"User with Name:{firstName} {lastName} has been added successfully", cancellationToken: token);
+                $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been added successfully", cancellationToken: token);
 
         }
 
         static async Task<Message> EditPersonAsync(ITelegramBotClient botClient, IUserService userService,
             Message message,
-            CancellationToken token, User _user)
+            CancellationToken token)
         {
+            var validatedName = ValidateName(message, token);
+
+            if (!validatedName.IsNameMatch)
+            {
+                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                    "Please, enter a valid name and last name!", cancellationToken: token);
+            }
+
             await userService.EditUserByIdAsync(new UserDto
             {
-                Id = _user.Id,
-                FirstName = _user.FirstName,
-                LastName = _user.LastName
+                Id = validatedName.Id,
+                FirstName = validatedName.FirstName,
+                LastName = validatedName.LastName
             }, token);
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                $"User with Name:{_user.FirstName} {_user.LastName} has been added successfully", cancellationToken: token);
+                $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been added successfully", cancellationToken: token);
         }
 
         static async Task<Message> DeletePersonByIdAsync(ITelegramBotClient botClient, IUserService userService,
@@ -286,6 +296,33 @@ public class UpdateHandler : IUpdateHandler
                 result, cancellationToken: token);
 
         }
+    }
+
+    private static UserDto ValidateName(Message message, CancellationToken token)
+    {
+        var regex = new Regex(@"^[A-Z][a-z]+\s[A-Z][a-z]+$");
+
+        if (message.Text == null || !regex.IsMatch(message.Text))
+        {
+            return new UserDto
+            {
+                IsNameMatch = false
+            };
+        }
+
+        var match = regex.Match(message.Text);
+
+        var result = match.Groups[0].Value.Split(" ");
+        var firstName = result[0];
+        var lastName = result[1];
+        
+        return new UserDto
+        {
+            Id = _id,
+            IsNameMatch = true,
+            FirstName = firstName,
+            LastName = lastName
+        };
     }
 
     // Process Inline Keyboard callback data

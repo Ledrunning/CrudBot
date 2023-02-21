@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Globalization;
 using CrudBot.DAL.Entity;
+using CrudBot.Main.Model;
 using Telegram.Bot;
 
 try
