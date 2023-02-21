@@ -1,4 +1,4 @@
-﻿namespace CrudBot.DAL.Entitiy
+﻿namespace CrudBot.DAL.Entity
 {
     public record User
     {

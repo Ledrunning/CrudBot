@@ -1,6 +1,6 @@
 ﻿using System.Data;
 using CrudBot.DAL.Contracts;
-using CrudBot.DAL.Entitiy;
+using CrudBot.DAL.Entity;
 using Microsoft.Data.SqlClient;
 
 namespace CrudBot.DAL.Repository;
@@ -12,17 +12,6 @@ public class UserRepository : IUserRepository
     public UserRepository(string connectionString)
     {
         _connectionString = connectionString;
-    }
-
-    private async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
-    {
-        await using var connection = new SqlConnection(_connectionString);
-        command.Connection = connection;
-        command.CommandType = CommandType.Text;
-        await connection.OpenAsync(token);
-        await command.ExecuteNonQueryAsync(token);
-
-        return command.Connection.State == ConnectionState.Open;
     }
 
     public async Task CreateTable(CancellationToken cancellationToken)
@@ -103,11 +92,48 @@ public class UserRepository : IUserRepository
         var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
         {
-            users.Add(new User(Convert.ToInt64(reader["Id"]), 
+            users.Add(new User(Convert.ToInt64(reader["Id"]),
                 reader["FirstName"].ToString(),
                 reader["LastName"].ToString()));
         }
 
         return users;
+    }
+
+    private async Task<bool> ExecuteAsync(SqlCommand command, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        command.Connection = connection;
+        command.CommandType = CommandType.Text;
+        await connection.OpenAsync(token);
+        await command.ExecuteNonQueryAsync(token);
+
+        return command.Connection.State == ConnectionState.Open;
+    }
+
+    public async Task<User> GetUserAsync(long id, CancellationToken token)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        var users = new List<User>();
+        const string query = @"SELECT 
+                                       [Id],
+                                       [FirstName],
+                                       [LastName]
+                                       FROM [dbo].[CrudBotUsers]
+                                       WHERE Id = @Id";
+
+        var command = new SqlCommand(query, connection);
+
+        command.Parameters.Add(new SqlParameter("Id", id));
+
+        await connection.OpenAsync(token);
+        var reader = await command.ExecuteReaderAsync(token);
+        await reader.ReadAsync(token);
+
+        return new User(Convert.ToInt64(reader["Id"]),
+                reader["FirstName"].ToString(),
+                reader["LastName"].ToString());
+
+         
     }
 }
