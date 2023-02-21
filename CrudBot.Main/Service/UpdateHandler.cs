@@ -246,7 +246,7 @@ public class UpdateHandler : IUpdateHandler
             }, token);
 
             return await botClient.SendTextMessageAsync(message.Chat.Id,
-                $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been added successfully", cancellationToken: token);
+                $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been edited successfully", cancellationToken: token);
         }
 
         static async Task<Message> DeletePersonByIdAsync(ITelegramBotClient botClient, IUserService userService,
