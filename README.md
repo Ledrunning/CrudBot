@@ -36,6 +36,7 @@ Put your API key to the next section
 ```
 
 The bot works with the following commands:
+```
 */fill_data       - Put data into the database from user.json file. This file included in the solution
 */add_person      - Add person into the database
 */get_persons     - Get all persons from the database
@@ -43,3 +44,4 @@ The bot works with the following commands:
 */delete_person   - Delete person by Id
 */delete_all      - Delete all persons from the database
 */get_weather     - Get current weather";
+```
