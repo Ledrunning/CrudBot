@@ -45,3 +45,6 @@ The bot works with the following commands:
 * /delete_all      - Delete all persons from the database
 * /get_weather     - Get current weather;
 
+# Demonstration:
+
+![](simpleCrudBot.gif)
