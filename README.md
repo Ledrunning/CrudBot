@@ -1,5 +1,5 @@
 # SimpleCrudBot
-##Telegram bot for getting weather and demonstrate simple CRUD operation with MS-SQL Database
+## Telegram bot for getting weather and demonstrate simple CRUD operation with MS-SQL Database
 
 * All sourse code written in C# .NET 6 as a console application using polling wrapper from: https://github.com/TelegramBots/Telegram.Bot.Examples
 * MrRoundRobin Nuget package used in this project: https://www.nuget.org/packages/Telegram.Bot
