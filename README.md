@@ -47,4 +47,5 @@ The bot works with the following commands:
 
 # Demonstration:
 
+
 ![](simpleCrudBot.gif)
