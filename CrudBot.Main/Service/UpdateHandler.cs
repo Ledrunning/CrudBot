@@ -85,7 +85,7 @@ public class UpdateHandler : IUpdateHandler
             return;
         }
 
-        Task<Message>? action = null;
+        Task<Message>? action;
         if (messageText.Split(' ')[0] == "/fill_data")
         {
             action = FillDataAsync(_botClient, _userService, message, cancellationToken);
@@ -165,12 +165,12 @@ public class UpdateHandler : IUpdateHandler
             CancellationToken cancellationToken)
         {
             const string usage = "Hi! I'm Simple Crud Boy! You can use the following commands:\n" +
-                                 "/fill_data       - Put data to database from user.json file\n" +
-                                 "/add_person      - Add person into database\n" +
-                                 "/get_persons     - Get all persons from database\n" +
-                                 "/edit_person     - Edit person in database\n" +
+                                 "/fill_data       - Put data into the database from user.json file.\n" +
+                                 "/add_person      - Add person into the database\n" +
+                                 "/get_persons     - Get all persons from the database\n" +
+                                 "/edit_person     - Edit person in the database\n" +
                                  "/delete_person   - Delete person by Id\n" +
-                                 "/delete_all      - Delete all persons from database\n" +
+                                 "/delete_all      - Delete all persons from the database\n" +
                                  "/get_weather     - Get current weather";
 
             return await botClient.SendTextMessageAsync(
