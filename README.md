@@ -43,5 +43,5 @@ The bot works with the following commands:
 * /edit_person     - Edit person in the database
 * /delete_person   - Delete person by Id
 * /delete_all      - Delete all persons from the database
-* /get_weather     - Get current weather";
+* /get_weather     - Get current weather;
 
