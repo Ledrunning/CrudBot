@@ -1,7 +1,7 @@
 # SimpleCrudBot
 ## Telegram bot for getting weather using OpenWeather and demonstrating simple CRUD operation with MS-SQL Database
 
-[![.NET CI](https://github.com/Ledrunning/CrudBot/actions/workflows/dotnet-ci.yml/badge.svg)](https://github.com/Ledrunning/CrudBot/actions/workflows/dotnet-ci.yml)
+[![.NET CI](https://github.com/Ledrunning/CrudBot/actions/workflows/main.yml/badge.svg)](https://github.com/Ledrunning/CrudBot/actions/workflows/main.yml)
 
 * All source code written in C# .NET 6 as a console application using polling wrapper from: https://github.com/TelegramBots/Telegram.Bot.Examples
 * MrRoundRobin Nuget package used in this project: https://www.nuget.org/packages/Telegram.Bot
