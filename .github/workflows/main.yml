@@ -1,0 +1,28 @@
+name: .NET CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: '6.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore CrudBot.Main/CrudBot.Main.csproj
+
+    - name: Build
+      run: dotnet build --configuration Release CrudBot.Main/CrudBot.Main.csproj
+
+    - name: Test
+      run: dotnet test --configuration Release --no-build CrudBot.Main/CrudBot.Main.csproj
