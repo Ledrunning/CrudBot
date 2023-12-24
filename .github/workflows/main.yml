@@ -1,28 +1,17 @@
-name: .NET CI
+version: 1.0.{build}
 
-on:
-  push:
-    branches:
-      - main
+branches:
+  only:
+    - main
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+image:
+  - Visual Studio 2019
 
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+configuration: Release
 
-    - name: Set up .NET
-      uses: actions/setup-dotnet@v2
-      with:
-        dotnet-version: '6.0.x'
+build_script:
+  - ps: nuget restore CrudBot.sln
+  - msbuild CrudBot.sln /p:Configuration=Release
 
-    - name: Restore dependencies
-      run: dotnet restore CrudBot.Main/CrudBot.Main.csproj
-
-    - name: Build
-      run: dotnet build --configuration Release CrudBot.Main/CrudBot.Main.csproj
-
-    - name: Test
-      run: dotnet test --configuration Release --no-build CrudBot.Main/CrudBot.Main.csproj
+test_script:
+  - dotnet test CrudBot.Main/CrudBot.Main.csproj --configuration Release
