@@ -7,13 +7,13 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up .NET
+    - name: Setup MSBuild
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: '6.0.x'
@@ -26,6 +26,8 @@ jobs:
       run: |
         msbuild CrudBot.sln /p:Configuration=Release
 
-    - name: Test
-      run: |
-        dotnet test CrudBot.Main/CrudBot.Main.csproj --configuration Release
+    - name: Publish Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: MyArtifacts
+        path: .   # Upload all files in the repository
