@@ -1,5 +1,5 @@
 # SimpleCrudBot
-## Telegram bot for getting weather using OpenWeather and demonstrating simple CRUD operation with MS-SQL Database
+## Telegram bot for getting weather using OpenWeather and demonstrating simple CRUD operation with MS-SQL Database over ADO.NET
 
 [![.NET CI](https://github.com/Ledrunning/CrudBot/actions/workflows/main.yml/badge.svg)](https://github.com/Ledrunning/CrudBot/actions/workflows/main.yml)
 
