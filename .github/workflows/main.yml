@@ -1,4 +1,4 @@
-name: .NET Framework Build
+name: .NET CI
 
 on:
   push:
@@ -7,23 +7,27 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: '6.0.x'
 
-    - name: Restore NuGet packages
-      run: nuget restore src\AirplaneSimulationTrajectory\AirplaneSimulationTrajectory.sln
+    - name: Restore dependencies
+      run: |
+        nuget restore CrudBot.sln
 
     - name: Build
-      run: msbuild /p:Configuration=Release src\AirplaneSimulationTrajectory\AirplaneSimulationTrajectory.sln
+      run: |
+        msbuild CrudBot.sln /p:Configuration=Release
 
     - name: Publish Artifact
       uses: actions/upload-artifact@v2
       with:
         name: MyArtifacts
-        path: .
+        path: .   # Upload all files in the repository
