@@ -19,10 +19,10 @@ jobs:
         dotnet-version: '6.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore CrudBot.Main/CrudBot.Main.csproj
+      run: dotnet restore CrudBot.sln
 
     - name: Build
-      run: dotnet build --configuration Release CrudBot.Main.csproj
+      run: dotnet build --configuration Release CrudBot.sln
 
     - name: Test
-      run: dotnet test --configuration Release --no-build CrudBot.Main/CrudBot.Main.csproj
+      run: dotnet test --configuration Release --no-build CrudBot.sln
