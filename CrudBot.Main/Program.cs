@@ -1,4 +1,5 @@
-﻿using CrudBot.DAL.Contracts;
+﻿using System.Globalization;
+using CrudBot.DAL.Contracts;
 using CrudBot.DAL.Repository;
 using CrudBot.Main;
 using CrudBot.Main.Abstraction;
@@ -8,9 +9,6 @@ using CrudBot.Weather.Contract;
 using CrudBot.Weather.Service;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.Globalization;
-using CrudBot.DAL.Entity;
-using CrudBot.Main.Model;
 using Telegram.Bot;
 
 try
@@ -33,7 +31,7 @@ try
             var apiKey = provider.GetConfiguration<OpenWeatherApi>().ApiKey;
             var baseUrl = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
             var timeOut = provider.GetConfiguration<OpenWeatherApi>().TimeOut;
-            var baseGeoUrl= provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
+            var baseGeoUrl = provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
             var cityLimit = provider.GetConfiguration<OpenWeatherApi>().GeoCityLimit;
 
             // Register named HttpClient to benefits from IHttpClientFactory
@@ -65,9 +63,9 @@ try
         })
         .Build();
 
-        var cultureInfo = new CultureInfo("en-EN");
-        CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
-        CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
+    var cultureInfo = new CultureInfo("en-EN");
+    CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+    CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
     await host.RunAsync();
 }
