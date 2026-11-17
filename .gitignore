@@ -357,3 +357,4 @@ healthchecksdb
 /CrudBot.Main/appsettings.Development.json
 /CrudBot.Main/appsettings.Development.json
 /CrudBot.Main/appsettings.json
+/CrudBot.Main/appsettings.Local.json
