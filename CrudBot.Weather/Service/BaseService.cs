@@ -38,7 +38,7 @@ public class BaseService
         return new RestClientOptions(url)
         {
             ThrowOnAnyError = true,
-            MaxTimeout = _timeout
+            Timeout = TimeSpan.FromMilliseconds(_timeout)
         };
     }
 }
