@@ -93,7 +93,7 @@ public class UpdateHandler : IUpdateHandler
         else if (messageText.Split(' ')[0] == "/add_person")
         {
             _isUserAdd = true;
-            action = _botClient.SendTextMessageAsync(message.Chat.Id, "Enter person's Name and Last name with a space between!", cancellationToken: cancellationToken);
+            action = _botClient.SendMessage(message.Chat.Id, "Enter person's Name and Last name with a space between!", cancellationToken: cancellationToken);
         }
         else if (_isUserAdd)
         {
@@ -107,7 +107,7 @@ public class UpdateHandler : IUpdateHandler
         else if (messageText.Split(' ')[0] == "/edit_person")
         {
             _isGetUser = true;
-            action = _botClient.SendTextMessageAsync(message.Chat.Id, "Enter person Id!", cancellationToken: cancellationToken);
+            action = _botClient.SendMessage(message.Chat.Id, "Enter person Id!", cancellationToken: cancellationToken);
         }
         else if (_isGetUser)
         {
@@ -116,7 +116,7 @@ public class UpdateHandler : IUpdateHandler
             _id = id;
 
             var user = await _userService.GetUserAsync(id, cancellationToken);
-            action = _botClient.SendTextMessageAsync(message.Chat.Id, $"{user.FirstName} {user.LastName}", cancellationToken: cancellationToken);
+            action = _botClient.SendMessage(message.Chat.Id, $"{user.FirstName} {user.LastName}", cancellationToken: cancellationToken);
             _isGetUser = false;
             _isUserEdit = true;
         }
@@ -128,7 +128,7 @@ public class UpdateHandler : IUpdateHandler
         else if (messageText.Split(' ')[0] == "/delete_person")
         {
             _isUserDelete = true;
-            action = _botClient.SendTextMessageAsync(message.Chat.Id,"Enter person Id!", cancellationToken: cancellationToken);
+            action = _botClient.SendMessage(message.Chat.Id,"Enter person Id!", cancellationToken: cancellationToken);
         }
         else if (_isUserDelete)
         {
@@ -173,7 +173,7 @@ public class UpdateHandler : IUpdateHandler
                                  "/delete_all      - Delete all persons from the database\n" +
                                  "/get_weather     - Get current weather";
 
-            return await botClient.SendTextMessageAsync(
+            return await botClient.SendMessage(
                 message.Chat.Id,
                 usage,
                 replyMarkup: new ReplyKeyboardRemove(),
@@ -186,7 +186,7 @@ public class UpdateHandler : IUpdateHandler
         {
             await userService.FillData(token);
 
-            return await botClient.SendTextMessageAsync(
+            return await botClient.SendMessage(
                 message.Chat.Id,
                 "Data has been filled!",
                 cancellationToken: token);
@@ -199,13 +199,13 @@ public class UpdateHandler : IUpdateHandler
             var users = await userService.ReadAllUsersAsync(token);
             foreach (var user in users)
             {
-                await botClient.SendTextMessageAsync(
+                await botClient.SendMessage(
                     message.Chat.Id,
                     $"Id:{user.Id}-{user.FirstName} {user.LastName}",
                     cancellationToken: token);
             }
 
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 "Done!", cancellationToken: token);
         }
 
@@ -216,12 +216,12 @@ public class UpdateHandler : IUpdateHandler
 
             if (!validatedName.IsNameMatch)
             {
-                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                return await botClient.SendMessage(message.Chat.Id,
                     "Please, enter a valid name and last name!", cancellationToken: token);
             }
 
             await userService.AddUserAsync(validatedName.FirstName, validatedName.LastName, token);
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been added successfully", cancellationToken: token);
 
         }
@@ -234,7 +234,7 @@ public class UpdateHandler : IUpdateHandler
 
             if (!validatedName.IsNameMatch)
             {
-                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                return await botClient.SendMessage(message.Chat.Id,
                     "Please, enter a valid name and last name!", cancellationToken: token);
             }
 
@@ -245,7 +245,7 @@ public class UpdateHandler : IUpdateHandler
                 LastName = validatedName.LastName
             }, token);
 
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 $"User with Name:{validatedName.FirstName} {validatedName.LastName} has been edited successfully", cancellationToken: token);
         }
 
@@ -255,7 +255,7 @@ public class UpdateHandler : IUpdateHandler
         {
             _ = long.TryParse(message.Text, out var id);
             await userService.DeleteUserByIdAsync(id, token);
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 $"User with Id:{id} has been deleted successfully", cancellationToken: token);
         }
 
@@ -264,13 +264,13 @@ public class UpdateHandler : IUpdateHandler
             CancellationToken token)
         {
             await userService.DeleteAllUsers(token);
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 "All clear!", cancellationToken: token);
         }
 
         static async Task<Message> EnterCityNameAsync(ITelegramBotClient botClient, Message message, CancellationToken token)
         {
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 "Enter the city name!", cancellationToken: token);
         }
 
@@ -282,7 +282,7 @@ public class UpdateHandler : IUpdateHandler
 
             if (!isMatch)
             {
-                return await botClient.SendTextMessageAsync(message.Chat.Id,
+                return await botClient.SendMessage(message.Chat.Id,
                     "Please, enter a valid city name!", cancellationToken: token);
             }
 
@@ -292,7 +292,7 @@ public class UpdateHandler : IUpdateHandler
                 $"Weather in {message.Text}: T={TemperatureConverter.ConvertKelvinToTemperature(weather.Main.Temp):#.##}," +
                 $" H%= {weather.Main.Humidity}, P={weather.Main.Pressure}";
 
-            return await botClient.SendTextMessageAsync(message.Chat.Id,
+            return await botClient.SendMessage(message.Chat.Id,
                 result, cancellationToken: token);
 
         }
@@ -330,12 +330,12 @@ public class UpdateHandler : IUpdateHandler
     {
         _logger.LogInformation("Received inline keyboard callback from: {CallbackQueryId}", callbackQuery.Id);
 
-        await _botClient.AnswerCallbackQueryAsync(
+        await _botClient.AnswerCallbackQuery(
             callbackQuery.Id,
             $"Received {callbackQuery.Data}",
             cancellationToken: cancellationToken);
 
-        await _botClient.SendTextMessageAsync(
+        await _botClient.SendMessage(
             callbackQuery.Message!.Chat.Id,
             $"Received {callbackQuery.Data}",
             cancellationToken: cancellationToken);
@@ -360,7 +360,7 @@ public class UpdateHandler : IUpdateHandler
                 new InputTextMessageContent("hello"))
         };
 
-        await _botClient.AnswerInlineQueryAsync(
+        await _botClient.AnswerInlineQuery(
             inlineQuery.Id,
             results,
             0,
@@ -373,9 +373,14 @@ public class UpdateHandler : IUpdateHandler
     {
         _logger.LogInformation("Received inline result: {ChosenInlineResultId}", chosenInlineResult.ResultId);
 
-        await _botClient.SendTextMessageAsync(
+        await _botClient.SendMessage(
             chosenInlineResult.From.Id,
             $"You chose result with Id: {chosenInlineResult.ResultId}",
             cancellationToken: cancellationToken);
+    }
+
+    public Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, HandleErrorSource source, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
     }
 }

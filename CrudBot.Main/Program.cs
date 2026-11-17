@@ -1,72 +1,84 @@
-﻿using System.Globalization;
-using CrudBot.DAL.Contracts;
+﻿using CrudBot.DAL.Contracts;
 using CrudBot.DAL.Repository;
-using CrudBot.Main;
 using CrudBot.Main.Abstraction;
 using CrudBot.Main.Configuration;
 using CrudBot.Main.Service;
 using CrudBot.Weather.Contract;
 using CrudBot.Weather.Service;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Globalization;
 using Telegram.Bot;
 
 try
 {
-    var host = Host.CreateDefaultBuilder(args)
-        .ConfigureServices((context, services) =>
+    var builder = Host.CreateApplicationBuilder(args);
+
+    builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
+    builder.Services.Configure<BotConfiguration>(
+        builder.Configuration.GetSection(BotConfiguration.Configuration));
+    builder.Services.Configure<DataBaseConfiguration>(
+        builder.Configuration.GetSection(DataBaseConfiguration.Configuration));
+    builder.Services.Configure<OpenWeatherApi>(
+        builder.Configuration.GetSection(OpenWeatherApi.Configuration));
+
+    var connectionString = builder.Configuration
+        .GetSection(DataBaseConfiguration.Configuration)
+        .Get<DataBaseConfiguration>()!.ConnectionString;
+
+    var botConfig = builder.Configuration
+        .GetSection(BotConfiguration.Configuration)
+        .Get<BotConfiguration>()!;
+
+    var weatherConfig = builder.Configuration
+        .GetSection(OpenWeatherApi.Configuration)
+        .Get<OpenWeatherApi>()!;
+
+    builder.Services.AddHttpClient("t.me/my_crud_bot")
+        .AddTypedClient<ITelegramBotClient>(httpClient =>
         {
-            // Register configuration
-            services.Configure<BotConfiguration>(
-                context.Configuration.GetSection(BotConfiguration.Configuration));
-            services.Configure<DataBaseConfiguration>(
-                context.Configuration.GetSection(DataBaseConfiguration.Configuration));
-            services.Configure<OpenWeatherApi>(
-                context.Configuration.GetSection(OpenWeatherApi.Configuration));
+            TelegramBotClientOptions options = new(botConfig.BotToken);
+            return new TelegramBotClient(options, httpClient);
+        });
 
-            var provider = services.BuildServiceProvider();
+    try
+    {
+        var userRepository = new UserRepository(connectionString);
+        await userRepository.CreateTable(CancellationToken.None);
 
-            var connectionString = provider.GetConfiguration<DataBaseConfiguration>().ConnectionString;
-            var botConfig = provider.GetConfiguration<BotConfiguration>();
-            var apiKey = provider.GetConfiguration<OpenWeatherApi>().ApiKey;
-            var baseUrl = provider.GetConfiguration<OpenWeatherApi>().BaseUrl;
-            var timeOut = provider.GetConfiguration<OpenWeatherApi>().TimeOut;
-            var baseGeoUrl = provider.GetConfiguration<OpenWeatherApi>().BaseGeoUrl;
-            var cityLimit = provider.GetConfiguration<OpenWeatherApi>().GeoCityLimit;
+        builder.Services.AddSingleton<IUserRepository>(userRepository);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine(ex);
+    }
 
-            // Register named HttpClient to benefits from IHttpClientFactory
-            // and consume it with ITelegramBotClient typed client.
-            // More read:
-            //  https://docs.microsoft.com/en-us/aspnet/core/fundamentals/http-requests?view=aspnetcore-5.0#typed-clients
-            //  https://docs.microsoft.com/en-us/dotnet/architecture/microservices/implement-resilient-applications/use-httpclientfactory-to-implement-resilient-http-requests
-            services.AddHttpClient("t.me/my_crud_bot")
-                .AddTypedClient<ITelegramBotClient>(httpClient =>
-                {
-                    TelegramBotClientOptions options = new(botConfig.BotToken);
-                    return new TelegramBotClient(options, httpClient);
-                });
+    builder.Services.AddScoped<UpdateHandler>();
+    builder.Services.AddScoped<ReceiverService>();
+    builder.Services.AddHostedService<PollingService>();
+    builder.Services.AddScoped<IUserService, UserService>();
 
-            var userRepository = new UserRepository(connectionString);
-            userRepository.CreateTable(CancellationToken.None).GetAwaiter();
+    var geoWebService = new OpenWeatherRestGeoService(
+        weatherConfig.ApiKey,
+        weatherConfig.BaseGeoUrl,
+        weatherConfig.GeoCityLimit,
+        weatherConfig.TimeOut);
+    builder.Services.AddSingleton<IOpenWeatherGeoRestService>(geoWebService);
 
-            services.AddSingleton<IUserRepository>(userRepository);
-            services.AddScoped<UpdateHandler>();
-            services.AddScoped<ReceiverService>();
-            services.AddHostedService<PollingService>();
-            services.AddScoped<IUserService, UserService>();
-
-            var geoWebService = new OpenWeatherRestGeoService(apiKey, baseGeoUrl, cityLimit, timeOut);
-            services.AddSingleton<IOpenWeatherGeoRestService>(geoWebService);
-
-            var openWeatherService = new OpenWeatherRestService(geoWebService, apiKey, baseUrl, timeOut);
-            services.AddSingleton<IOpenWeatherRestService>(openWeatherService);
-        })
-        .Build();
+    var openWeatherService = new OpenWeatherRestService(
+        geoWebService,
+        weatherConfig.ApiKey,
+        weatherConfig.BaseUrl,
+        weatherConfig.TimeOut);
+    builder.Services.AddSingleton<IOpenWeatherRestService>(openWeatherService);
 
     var cultureInfo = new CultureInfo("en-EN");
     CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
     CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
+    var host = builder.Build();
     await host.RunAsync();
 }
 catch (Exception e)
